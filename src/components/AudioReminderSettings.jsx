@@ -10,6 +10,7 @@ function AudioReminderSettings({ isOpen, onClose }) {
   const [volume, setVolume] = useState(0.7);
   const [isTestPlaying, setIsTestPlaying] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState('default');
+  const [selectedRecitation, setSelectedRecitation] = useState('quranStudy');
 
   useEffect(() => {
     audioManager.initializeAudio();
@@ -27,8 +28,8 @@ function AudioReminderSettings({ isOpen, onClose }) {
       setIsTestPlaying(false);
     } else {
       setIsTestPlaying(true);
-      await audioManager.playReminderSound('quranStudy', 5000);
-      setTimeout(() => setIsTestPlaying(false), 5000);
+      await audioManager.playReminderSound(selectedRecitation, 8000);
+      setTimeout(() => setIsTestPlaying(false), 8000);
     }
   };
 
@@ -36,6 +37,14 @@ function AudioReminderSettings({ isOpen, onClose }) {
     const granted = await audioManager.requestNotificationPermission();
     setNotificationPermission(granted ? 'granted' : 'denied');
   };
+
+  const audioOptions = [
+    { value: 'quranStudy', label: 'Surah Al-Alaq (Read!)' },
+    { value: 'prayer', label: 'Prayer Call (Hayya ala-Salah)' },
+    { value: 'charity', label: 'Surah Al-Baqarah (Charity)' },
+    { value: 'family', label: 'Surah Luqman (Family)' },
+    { value: 'general', label: 'Surah Al-Fatihah (Opening)' }
+  ];
 
   if (!isOpen) return null;
 
@@ -57,7 +66,7 @@ function AudioReminderSettings({ isOpen, onClose }) {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
             <SafeIcon icon={FiSettings} className="text-2xl text-emerald-600" />
-            <h2 className="text-xl font-bold text-emerald-800">Audio Settings</h2>
+            <h2 className="text-xl font-bold text-emerald-800">Quranic Audio Settings</h2>
           </div>
           <button
             onClick={onClose}
@@ -72,7 +81,7 @@ function AudioReminderSettings({ isOpen, onClose }) {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-3">
               <SafeIcon icon={volume > 0 ? FiVolume2 : FiVolumeX} className="inline mr-2" />
-              Reminder Volume
+              Recitation Volume
             </label>
             <div className="flex items-center space-x-3">
               <input
@@ -90,24 +99,40 @@ function AudioReminderSettings({ isOpen, onClose }) {
             </div>
           </div>
 
+          {/* Select Recitation */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Select Quranic Recitation
+            </label>
+            <select
+              value={selectedRecitation}
+              onChange={(e) => setSelectedRecitation(e.target.value)}
+              className="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
+            >
+              {audioOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Test Audio */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-3">
-              Test Reminder Sound
+              Test Selected Recitation
             </label>
             <button
               onClick={testAudioReminder}
               className={`w-full flex items-center justify-center space-x-2 p-3 rounded-xl font-semibold transition-colors ${
-                isTestPlaying
-                  ? 'bg-red-500 hover:bg-red-600 text-white'
-                  : 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                isTestPlaying ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-emerald-500 hover:bg-emerald-600 text-white'
               }`}
             >
               <SafeIcon icon={isTestPlaying ? FiPause : FiPlay} />
-              <span>{isTestPlaying ? 'Stop Test' : 'Play Test Sound'}</span>
+              <span>{isTestPlaying ? 'Stop Recitation' : 'Play Quranic Recitation'}</span>
             </button>
             <p className="text-xs text-gray-500 mt-2 text-center">
-              This will play a peaceful Islamic reminder tone
+              Listen to the selected Quranic verse or Islamic phrase
             </p>
           </div>
 
@@ -118,8 +143,7 @@ function AudioReminderSettings({ isOpen, onClose }) {
             </label>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">
-                Status: {notificationPermission === 'granted' ? '✅ Enabled' : 
-                        notificationPermission === 'denied' ? '❌ Blocked' : '⚠️ Not Set'}
+                Status: {notificationPermission === 'granted' ? '✅ Enabled' : notificationPermission === 'denied' ? '❌ Blocked' : '⚠️ Not Set'}
               </span>
               {notificationPermission !== 'granted' && (
                 <button
@@ -138,11 +162,10 @@ function AudioReminderSettings({ isOpen, onClose }) {
           {/* Islamic Reminder Info */}
           <div className="bg-emerald-50 rounded-xl p-4">
             <h3 className="text-sm font-semibold text-emerald-800 mb-2">
-              🕌 Islamic Audio Reminders
+              🕌 Quranic Audio Reminders
             </h3>
             <p className="text-xs text-emerald-700 leading-relaxed">
-              Our gentle reminder tones are designed to peacefully call you to your Islamic practices. 
-              Each category has its own unique sound to help you distinguish between different types of reminders.
+              Our reminders feature beautiful Quranic recitations by Sheikh Mishary Rashid Alafasy, each carefully selected to match different types of reminders. These verses serve as a powerful reminder of your Islamic practices and commitments.
             </p>
           </div>
         </div>

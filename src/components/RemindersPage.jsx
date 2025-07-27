@@ -3,89 +3,21 @@ import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import audioManager from '../utils/audioManager';
+import { useReminders } from '../hooks/useReminders';
 
-const { FiBell, FiPlus, FiClock, FiRepeat, FiTrash2, FiVolume2, FiPlay, FiEdit, FiSave, FiX } = FiIcons;
+const { FiBell, FiPlus, FiClock, FiRepeat, FiTrash2, FiVolume2, FiPlay, FiEdit, FiSave, FiX, FiLoader } = FiIcons;
 
 function RemindersPage({ addNotification }) {
-  const [reminders, setReminders] = useState([
-    {
-      id: 1,
-      title: 'Quran Study Time',
-      message: 'Time to read and memorize Quran verses 📖',
-      time: '07:00',
-      frequency: 'Daily',
-      active: true,
-      category: 'Spiritual',
-      audioCategory: 'quranStudy',
-      playAudio: true
-    },
-    {
-      id: 2,
-      title: 'Call Mom',
-      message: 'Remember to call your mother and check on her 📞',
-      time: '19:00',
-      frequency: 'Daily',
-      active: true,
-      category: 'Family',
-      audioCategory: 'family',
-      playAudio: true
-    },
-    {
-      id: 3,
-      title: 'Exercise Time',
-      message: 'Time for your daily exercise routine 💪',
-      time: '06:00',
-      frequency: 'Daily',
-      active: true,
-      category: 'Health',
-      audioCategory: 'general',
-      playAudio: false
-    },
-    {
-      id: 4,
-      title: 'Computer Break',
-      message: 'Take a break from the computer and rest your eyes 👀',
-      time: '14:00',
-      frequency: 'Daily',
-      active: true,
-      category: 'Health',
-      audioCategory: 'general',
-      playAudio: false
-    },
-    {
-      id: 5,
-      title: 'Monday Fasting',
-      message: 'Today is Monday - time for Sunnah fasting 🌙',
-      time: '05:00',
-      frequency: 'Weekly (Monday)',
-      active: true,
-      category: 'Spiritual',
-      audioCategory: 'prayer',
-      playAudio: true
-    },
-    {
-      id: 6,
-      title: 'Thursday Fasting',
-      message: 'Today is Thursday - time for Sunnah fasting 🌙',
-      time: '05:00',
-      frequency: 'Weekly (Thursday)',
-      active: true,
-      category: 'Spiritual',
-      audioCategory: 'prayer',
-      playAudio: true
-    },
-    {
-      id: 7,
-      title: 'Weekly Charity',
-      message: 'Time to give your weekly charity (Sadaqah) 💝',
-      time: '20:00',
-      frequency: 'Weekly (Friday)',
-      active: true,
-      category: 'Charity',
-      audioCategory: 'charity',
-      playAudio: true
-    }
-  ]);
+  const {
+    reminders,
+    loading,
+    error,
+    addReminder,
+    updateReminder,
+    deleteReminder,
+    toggleReminder,
+    toggleAudio
+  } = useReminders();
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingReminder, setEditingReminder] = useState(null);
@@ -104,11 +36,11 @@ function RemindersPage({ addNotification }) {
   const frequencies = ['Daily', 'Weekly (Monday)', 'Weekly (Tuesday)', 'Weekly (Wednesday)', 'Weekly (Thursday)', 'Weekly (Friday)', 'Weekly (Saturday)', 'Weekly (Sunday)', 'Every 2 hours', 'Custom'];
   const categories = ['Spiritual', 'Health', 'Family', 'Learning', 'Charity'];
   const audioCategories = [
-    { value: 'quranStudy', label: 'Quran Study (Melodic)' },
-    { value: 'prayer', label: 'Prayer (Ascending)' },
-    { value: 'charity', label: 'Charity (Uplifting)' },
-    { value: 'family', label: 'Family (Gentle)' },
-    { value: 'general', label: 'General (Peaceful)' }
+    { value: 'quranStudy', label: 'Quran Study (Surah Al-Alaq)' },
+    { value: 'prayer', label: 'Prayer Call (Hayya ala-Salah)' },
+    { value: 'charity', label: 'Charity (Surah Al-Baqarah)' },
+    { value: 'family', label: 'Family (Surah Luqman)' },
+    { value: 'general', label: 'General (Surah Al-Fatihah)' }
   ];
 
   // Enhanced alarm checking system
@@ -186,32 +118,42 @@ function RemindersPage({ addNotification }) {
     return () => clearInterval(interval);
   }, []);
 
-  const addReminder = () => {
+  // Preload audio files when the component mounts
+  useEffect(() => {
+    audioManager.preloadAudioFiles();
+  }, []);
+
+  const handleAddReminder = async () => {
     if (newReminder.title.trim() && newReminder.message.trim()) {
-      setReminders(prev => [...prev, {
-        ...newReminder,
-        id: Date.now(),
-        active: true
-      }]);
-      setNewReminder({
-        title: '',
-        message: '',
-        time: '07:00',
-        frequency: 'Daily',
-        category: 'Spiritual',
-        audioCategory: 'general',
-        playAudio: true
-      });
-      setShowAddForm(false);
+      const result = await addReminder(newReminder);
       
-      // Clear fired reminders when adding new
-      setFiredReminders(new Set());
-      
-      addNotification({
-        type: 'success',
-        title: 'Reminder Added! ✨',
-        message: `"${newReminder.title}" reminder has been set with audio ${newReminder.playAudio ? 'enabled' : 'disabled'}.`
-      });
+      if (result) {
+        setNewReminder({
+          title: '',
+          message: '',
+          time: '07:00',
+          frequency: 'Daily',
+          category: 'Spiritual',
+          audioCategory: 'general',
+          playAudio: true
+        });
+        setShowAddForm(false);
+        
+        // Clear fired reminders when adding new
+        setFiredReminders(new Set());
+        
+        addNotification({
+          type: 'success',
+          title: 'Reminder Added! ✨',
+          message: `"${newReminder.title}" reminder has been saved and synced across your devices.`
+        });
+      } else {
+        addNotification({
+          type: 'warning',
+          title: 'Failed to Add Reminder',
+          message: 'There was an error saving your reminder. Please try again.'
+        });
+      }
     }
   };
 
@@ -220,21 +162,28 @@ function RemindersPage({ addNotification }) {
     setEditForm({ ...reminder });
   };
 
-  const saveEdit = () => {
-    setReminders(prev => prev.map(reminder => 
-      reminder.id === editingReminder ? { ...editForm } : reminder
-    ));
-    setEditingReminder(null);
-    setEditForm({});
+  const saveEdit = async () => {
+    const result = await updateReminder(editingReminder, editForm);
     
-    // Clear fired reminders when editing
-    setFiredReminders(new Set());
-    
-    addNotification({
-      type: 'success',
-      title: 'Reminder Updated! ✅',
-      message: 'Your reminder has been successfully updated.'
-    });
+    if (result) {
+      setEditingReminder(null);
+      setEditForm({});
+      
+      // Clear fired reminders when editing
+      setFiredReminders(new Set());
+      
+      addNotification({
+        type: 'success',
+        title: 'Reminder Updated! ✅',
+        message: 'Your reminder has been successfully updated and synced.'
+      });
+    } else {
+      addNotification({
+        type: 'warning',
+        title: 'Update Failed',
+        message: 'There was an error updating your reminder. Please try again.'
+      });
+    }
   };
 
   const cancelEdit = () => {
@@ -242,39 +191,64 @@ function RemindersPage({ addNotification }) {
     setEditForm({});
   };
 
-  const toggleReminder = (id) => {
-    setReminders(prev => prev.map(reminder => 
-      reminder.id === id ? { ...reminder, active: !reminder.active } : reminder
-    ));
+  const handleToggleReminder = async (id) => {
+    const result = await toggleReminder(id);
     
-    // Clear fired reminders when toggling
-    setFiredReminders(new Set());
+    if (result) {
+      // Clear fired reminders when toggling
+      setFiredReminders(new Set());
+      
+      addNotification({
+        type: 'info',
+        title: 'Reminder Updated',
+        message: `Reminder ${result.active ? 'enabled' : 'disabled'} and synced.`
+      });
+    }
   };
 
-  const toggleAudio = (id) => {
-    setReminders(prev => prev.map(reminder => 
-      reminder.id === id ? { ...reminder, playAudio: !reminder.playAudio } : reminder
-    ));
+  const handleToggleAudio = async (id) => {
+    const result = await toggleAudio(id);
+    
+    if (result) {
+      addNotification({
+        type: 'info',
+        title: 'Audio Setting Updated',
+        message: `Audio ${result.playAudio ? 'enabled' : 'disabled'} for this reminder.`
+      });
+    }
   };
 
   const testReminderAudio = async (audioCategory) => {
     await audioManager.initializeAudio();
-    audioManager.playReminderSound(audioCategory, 5000);
+    audioManager.playReminderSound(audioCategory, 8000);
+    
+    // Get the label for the audio being played
+    const audioLabel = audioCategories.find(cat => cat.value === audioCategory)?.label || 'Islamic recitation';
+    
     addNotification({
       type: 'info',
       title: 'Testing Audio 🔊',
-      message: `Playing ${audioCategory} reminder tone...`
+      message: `Playing ${audioLabel}...`
     });
   };
 
-  const deleteReminder = (id) => {
-    setReminders(prev => prev.filter(r => r.id !== id));
-    setFiredReminders(new Set());
-    addNotification({
-      type: 'info',
-      title: 'Reminder Deleted 🗑️',
-      message: 'Reminder has been removed from your list.'
-    });
+  const handleDeleteReminder = async (id) => {
+    const result = await deleteReminder(id);
+    
+    if (result) {
+      setFiredReminders(new Set());
+      addNotification({
+        type: 'info',
+        title: 'Reminder Deleted 🗑️',
+        message: 'Reminder has been removed and synced across your devices.'
+      });
+    } else {
+      addNotification({
+        type: 'warning',
+        title: 'Delete Failed',
+        message: 'There was an error deleting your reminder. Please try again.'
+      });
+    }
   };
 
   const getCategoryColor = (category) => {
@@ -296,6 +270,34 @@ function RemindersPage({ addNotification }) {
     return `${hour12}:${minutes} ${ampm}`;
   };
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto p-4 space-y-6">
+        <div className="text-center py-12">
+          <SafeIcon icon={FiLoader} className="text-4xl text-emerald-600 animate-spin mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-emerald-800 mb-2">Loading Your Reminders...</h2>
+          <p className="text-emerald-600">Syncing your data across devices</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto p-4 space-y-6">
+        <div className="text-center py-12">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4">
+            <h3 className="font-semibold">Error Loading Reminders</h3>
+            <p className="text-sm mt-1">{error}</p>
+            <p className="text-xs mt-2">Please check your internet connection and try refreshing the page.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6">
       <motion.div
@@ -303,11 +305,15 @@ function RemindersPage({ addNotification }) {
         animate={{ y: 0, opacity: 1 }}
         className="text-center py-6"
       >
-        <h1 className="text-3xl font-bold text-emerald-800 mb-2">Audio Reminders</h1>
-        <p className="text-emerald-600">Stay consistent with beautiful Quranic-inspired tones for your good deeds</p>
+        <h1 className="text-3xl font-bold text-emerald-800 mb-2">Quranic Reminders</h1>
+        <p className="text-emerald-600">Stay consistent with beautiful Quranic recitations for your good deeds</p>
         <div className="mt-3 inline-flex items-center space-x-2 bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-sm">
           <SafeIcon icon={FiVolume2} className="text-xs" />
-          <span>Enhanced audio with peaceful Islamic melodies</span>
+          <span>Enhanced with actual Quranic verses and Islamic phrases</span>
+        </div>
+        <div className="mt-2 inline-flex items-center space-x-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
+          <SafeIcon icon={FiIcons.FiCloud} className="text-xs" />
+          <span>Synced across all your devices</span>
         </div>
         
         {/* Current time display for debugging */}
@@ -326,7 +332,7 @@ function RemindersPage({ addNotification }) {
         className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white p-4 rounded-xl font-semibold flex items-center justify-center space-x-2 shadow-lg"
       >
         <SafeIcon icon={FiPlus} />
-        <span>Add New Audio Reminder</span>
+        <span>Add New Quranic Reminder</span>
       </motion.button>
 
       {/* Add Reminder Form */}
@@ -336,7 +342,7 @@ function RemindersPage({ addNotification }) {
           animate={{ height: 'auto', opacity: 1 }}
           className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-emerald-100"
         >
-          <h3 className="text-lg font-semibold text-emerald-800 mb-4">Add New Audio Reminder</h3>
+          <h3 className="text-lg font-semibold text-emerald-800 mb-4">Add New Quranic Reminder</h3>
           
           <div className="space-y-4">
             <input
@@ -392,7 +398,7 @@ function RemindersPage({ addNotification }) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Audio Type</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Quranic Audio</label>
                 <select
                   value={newReminder.audioCategory}
                   onChange={(e) => setNewReminder(prev => ({ ...prev, audioCategory: e.target.value }))}
@@ -408,8 +414,8 @@ function RemindersPage({ addNotification }) {
             {/* Audio Toggle */}
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div>
-                <span className="text-sm font-medium text-gray-700">Play Audio Reminder</span>
-                <p className="text-xs text-gray-500">Enable beautiful Islamic tones</p>
+                <span className="text-sm font-medium text-gray-700">Play Quranic Audio</span>
+                <p className="text-xs text-gray-500">Enable beautiful recitations from the Quran</p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -424,10 +430,10 @@ function RemindersPage({ addNotification }) {
             
             <div className="flex space-x-3">
               <button
-                onClick={addReminder}
+                onClick={handleAddReminder}
                 className="flex-1 bg-emerald-500 text-white p-3 rounded-lg font-semibold hover:bg-emerald-600 transition-colors"
               >
-                Add Audio Reminder
+                Add Quranic Reminder
               </button>
               <button
                 onClick={() => setShowAddForm(false)}
@@ -526,7 +532,7 @@ function RemindersPage({ addNotification }) {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Audio Type</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Quranic Audio</label>
                     <select
                       value={editForm.audioCategory}
                       onChange={(e) => setEditForm(prev => ({ ...prev, audioCategory: e.target.value }))}
@@ -588,7 +594,7 @@ function RemindersPage({ addNotification }) {
                     <button
                       onClick={() => testReminderAudio(reminder.audioCategory)}
                       className="p-2 text-purple-500 hover:text-purple-700 hover:bg-purple-50 rounded-full transition-colors"
-                      title="Test Audio"
+                      title="Test Quranic Audio"
                     >
                       <SafeIcon icon={FiPlay} />
                     </button>
@@ -605,13 +611,13 @@ function RemindersPage({ addNotification }) {
 
                   {/* Audio Toggle */}
                   <button
-                    onClick={() => toggleAudio(reminder.id)}
+                    onClick={() => handleToggleAudio(reminder.id)}
                     className={`p-2 rounded-full transition-colors ${
                       reminder.playAudio 
                         ? 'text-purple-600 bg-purple-100 hover:bg-purple-200' 
                         : 'text-gray-400 hover:text-purple-600 hover:bg-purple-50'
                     }`}
-                    title="Toggle Audio"
+                    title="Toggle Quranic Audio"
                   >
                     <SafeIcon icon={FiVolume2} />
                   </button>
@@ -621,7 +627,7 @@ function RemindersPage({ addNotification }) {
                     <input
                       type="checkbox"
                       checked={reminder.active}
-                      onChange={() => toggleReminder(reminder.id)}
+                      onChange={() => handleToggleReminder(reminder.id)}
                       className="sr-only peer"
                     />
                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
@@ -629,7 +635,7 @@ function RemindersPage({ addNotification }) {
                   
                   {/* Delete Button */}
                   <button
-                    onClick={() => deleteReminder(reminder.id)}
+                    onClick={() => handleDeleteReminder(reminder.id)}
                     className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
                     title="Delete Reminder"
                   >
@@ -650,10 +656,10 @@ function RemindersPage({ addNotification }) {
       >
         <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2">
           <SafeIcon icon={FiVolume2} className="text-xl" />
-          <span>Test Audio Tones</span>
+          <span>Test Quranic Recitations</span>
         </h3>
         <p className="text-sm opacity-90 mb-4">
-          Listen to different Islamic-inspired reminder tones to find your perfect sound
+          Listen to different Quranic verses and Islamic phrases for your reminders
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {audioCategories.map(category => (
@@ -666,6 +672,51 @@ function RemindersPage({ addNotification }) {
               <span>{category.label.split(' ')[0]}</span>
             </button>
           ))}
+        </div>
+      </motion.div>
+
+      {/* Information about the Audio */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-emerald-100"
+      >
+        <h3 className="text-lg font-semibold text-emerald-800 mb-4">About the Quranic Audio</h3>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <h4 className="font-medium text-emerald-700">Quran Study (Surah Al-Alaq)</h4>
+            <p className="text-sm text-gray-600">
+              The first verses revealed to Prophet Muhammad ﷺ: "Read in the name of your Lord who created..."
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <h4 className="font-medium text-emerald-700">Prayer Call (Hayya ala-Salah)</h4>
+            <p className="text-sm text-gray-600">
+              The Islamic call to prayer: "Come to prayer, come to success..."
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <h4 className="font-medium text-emerald-700">Charity (Surah Al-Baqarah)</h4>
+            <p className="text-sm text-gray-600">
+              Verse about charity: "The example of those who spend their wealth in the way of Allah is like a seed which grows seven spikes..."
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <h4 className="font-medium text-emerald-700">Family (Surah Luqman)</h4>
+            <p className="text-sm text-gray-600">
+              Verse about respecting parents: "And We have enjoined upon man care for his parents..."
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <h4 className="font-medium text-emerald-700">General (Surah Al-Fatihah)</h4>
+            <p className="text-sm text-gray-600">
+              The opening chapter of the Quran: "In the name of Allah, the Entirely Merciful, the Especially Merciful..."
+            </p>
+          </div>
         </div>
       </motion.div>
     </div>

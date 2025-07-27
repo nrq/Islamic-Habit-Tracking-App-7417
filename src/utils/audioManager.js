@@ -5,6 +5,7 @@ class AudioManager {
     this.isPlaying = false;
     this.volume = 0.7;
     this.isInitialized = false;
+    this.audioCache = {};
   }
 
   async initializeAudio() {
@@ -22,9 +23,9 @@ class AudioManager {
     }
   }
 
-  async playReminderSound(category = 'general', duration = 6000) {
+  async playReminderSound(category = 'general', duration = 8000) {
     try {
-      console.log(`Playing reminder sound: ${category}`);
+      console.log(`Playing Islamic vocal reminder: ${category}`);
       
       // Ensure audio is initialized
       await this.initializeAudio();
@@ -32,29 +33,12 @@ class AudioManager {
       // Stop any currently playing audio
       this.stopCurrentAudio();
 
+      // Get the appropriate audio URL based on category
+      const audioUrl = this.getIslamicAudioUrl(category);
+      
       // Create audio element
       const audio = new Audio();
-      
-      // Generate the appropriate tone based on category
-      let audioDataUrl;
-      switch (category) {
-        case 'quranStudy':
-          audioDataUrl = this.generateQuranTone();
-          break;
-        case 'prayer':
-          audioDataUrl = this.generatePrayerTone();
-          break;
-        case 'charity':
-          audioDataUrl = this.generateCharityTone();
-          break;
-        case 'family':
-          audioDataUrl = this.generateFamilyTone();
-          break;
-        default:
-          audioDataUrl = this.generateGeneralTone();
-      }
-
-      audio.src = audioDataUrl;
+      audio.src = audioUrl;
       audio.volume = this.volume;
       audio.loop = false;
 
@@ -66,152 +50,79 @@ class AudioManager {
       
       if (playPromise !== undefined) {
         playPromise.then(() => {
-          console.log('Audio started playing successfully');
+          console.log('Islamic vocal reminder started playing successfully');
         }).catch(error => {
           console.warn('Audio play failed:', error);
           this.playSystemNotification();
         });
       }
 
-      // Auto-stop after duration
+      // Auto-stop after duration if needed
+      // Only stop if the audio is longer than the specified duration
       setTimeout(() => {
-        this.stopCurrentAudio();
+        if (this.isPlaying && this.currentAudio) {
+          this.stopCurrentAudio();
+        }
       }, duration);
 
       // Handle audio end
       audio.addEventListener('ended', () => {
         this.isPlaying = false;
         this.currentAudio = null;
-        console.log('Audio playback ended');
+        console.log('Islamic vocal reminder playback ended');
       });
 
       return true;
     } catch (error) {
-      console.warn('Could not play reminder sound:', error);
-      // Fallback to system notification sound
+      console.warn('Could not play Islamic vocal reminder:', error);
+      // Fallback to system notification
       this.playSystemNotification();
       return false;
     }
   }
 
-  generateQuranTone() {
-    // Beautiful melodic tone for Quran study - inspired by Islamic call patterns
-    return this.createToneSequence([
-      { freq: 523.25, duration: 0.8, volume: 0.6 }, // C5
-      { freq: 587.33, duration: 0.6, volume: 0.5 }, // D5
-      { freq: 659.25, duration: 0.8, volume: 0.6 }, // E5
-      { freq: 698.46, duration: 1.2, volume: 0.7 }, // F5
-      { freq: 659.25, duration: 0.6, volume: 0.5 }, // E5
-      { freq: 587.33, duration: 1.0, volume: 0.6 }  // D5
-    ]);
-  }
-
-  generatePrayerTone() {
-    // Gentle ascending tone for prayer reminders
-    return this.createToneSequence([
-      { freq: 440.00, duration: 0.7, volume: 0.5 }, // A4
-      { freq: 523.25, duration: 0.7, volume: 0.6 }, // C5
-      { freq: 659.25, duration: 0.7, volume: 0.7 }, // E5
-      { freq: 783.99, duration: 1.2, volume: 0.6 }, // G5
-      { freq: 659.25, duration: 0.8, volume: 0.5 }  // E5
-    ]);
-  }
-
-  generateCharityTone() {
-    // Warm, uplifting tone for charity reminders
-    return this.createToneSequence([
-      { freq: 349.23, duration: 0.6, volume: 0.5 }, // F4
-      { freq: 415.30, duration: 0.6, volume: 0.6 }, // G#4
-      { freq: 523.25, duration: 0.8, volume: 0.7 }, // C5
-      { freq: 622.25, duration: 0.6, volume: 0.6 }, // D#5
-      { freq: 698.46, duration: 1.0, volume: 0.7 }, // F5
-      { freq: 523.25, duration: 0.8, volume: 0.5 }  // C5
-    ]);
-  }
-
-  generateFamilyTone() {
-    // Caring, gentle tone for family reminders
-    return this.createToneSequence([
-      { freq: 261.63, duration: 0.8, volume: 0.6 }, // C4
-      { freq: 329.63, duration: 0.6, volume: 0.5 }, // E4
-      { freq: 392.00, duration: 0.8, volume: 0.6 }, // G4
-      { freq: 523.25, duration: 1.0, volume: 0.7 }, // C5
-      { freq: 392.00, duration: 0.8, volume: 0.5 }  // G4
-    ]);
-  }
-
-  generateGeneralTone() {
-    // Simple, peaceful tone for general reminders
-    return this.createToneSequence([
-      { freq: 440.00, duration: 0.8, volume: 0.6 }, // A4
-      { freq: 554.37, duration: 0.8, volume: 0.6 }, // C#5
-      { freq: 659.25, duration: 1.2, volume: 0.7 }, // E5
-      { freq: 554.37, duration: 0.8, volume: 0.5 }  // C#5
-    ]);
-  }
-
-  createToneSequence(notes) {
-    const sampleRate = 44100;
-    const totalDuration = notes.reduce((sum, note) => sum + note.duration, 0);
-    const totalSamples = Math.floor(sampleRate * totalDuration);
+  getIslamicAudioUrl(category) {
+    // Check if we already have this audio cached
+    if (this.audioCache[category]) {
+      return this.audioCache[category];
+    }
     
-    // Create WAV file header
-    const buffer = new ArrayBuffer(44 + totalSamples * 2);
-    const view = new DataView(buffer);
+    // Base URL for EveryAyah.com recitations (using Mishary Rashid Alafasy voice)
+    const baseEveryAyahUrl = 'https://everyayah.com/data/Alafasy_128kbps/';
     
-    // WAV header
-    const writeString = (offset, string) => {
-      for (let i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
-      }
-    };
+    // Define audio URLs for each category using actual Islamic recitations
+    let audioUrl;
     
-    writeString(0, 'RIFF');
-    view.setUint32(4, 36 + totalSamples * 2, true);
-    writeString(8, 'WAVE');
-    writeString(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, 1, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * 2, true);
-    view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true);
-    writeString(36, 'data');
-    view.setUint32(40, totalSamples * 2, true);
-    
-    // Generate audio data
-    let currentSample = 0;
-    
-    notes.forEach(note => {
-      const noteSamples = Math.floor(sampleRate * note.duration);
-      const fadeInSamples = Math.floor(noteSamples * 0.1);
-      const fadeOutSamples = Math.floor(noteSamples * 0.1);
-      
-      for (let i = 0; i < noteSamples && currentSample < totalSamples; i++) {
-        const t = i / sampleRate;
-        let amplitude = note.volume;
+    switch (category) {
+      case 'quranStudy':
+        // Surah Al-'Alaq 96:1-5 (Read! In the name of your Lord...)
+        audioUrl = `${baseEveryAyahUrl}096001.mp3`;
+        break;
         
-        // Apply fade in/out for smoother transitions
-        if (i < fadeInSamples) {
-          amplitude *= i / fadeInSamples;
-        } else if (i > noteSamples - fadeOutSamples) {
-          amplitude *= (noteSamples - i) / fadeOutSamples;
-        }
+      case 'prayer':
+        // "Hayya 'ala as-Salah" (Come to prayer)
+        audioUrl = 'https://islamic-audio.cdn.prismic.io/islamic-audio/c0d5f663-bbc8-49bb-aad9-8525c3ca7d67_hayya-alas-salah.mp3';
+        break;
         
-        // Generate sine wave with slight harmonics for richer sound
-        const fundamental = Math.sin(2 * Math.PI * note.freq * t);
-        const harmonic = Math.sin(2 * Math.PI * note.freq * 2 * t) * 0.3;
-        const sample = (fundamental + harmonic) * amplitude;
+      case 'charity':
+        // Surah Al-Baqarah 2:261 (The parable of those who spend their wealth in the way of Allah...)
+        audioUrl = `${baseEveryAyahUrl}002261.mp3`;
+        break;
         
-        const intSample = Math.max(-32767, Math.min(32767, sample * 32767));
-        view.setInt16(44 + currentSample * 2, intSample, true);
-        currentSample++;
-      }
-    });
+      case 'family':
+        // Surah Luqman 31:14 (And We have enjoined upon man [care] for his parents...)
+        audioUrl = `${baseEveryAyahUrl}031014.mp3`;
+        break;
+        
+      default:
+        // Surah Al-Fatihah 1:1-4 (Default reminder - Opening of the Quran)
+        audioUrl = `${baseEveryAyahUrl}001001.mp3`;
+    }
     
-    const blob = new Blob([buffer], { type: 'audio/wav' });
-    return URL.createObjectURL(blob);
+    // Cache the audio URL
+    this.audioCache[category] = audioUrl;
+    
+    return audioUrl;
   }
 
   playSystemNotification() {
@@ -246,6 +157,18 @@ class AudioManager {
       return permission === 'granted';
     }
     return Notification.permission === 'granted';
+  }
+
+  // Method to preload audio files for better performance
+  preloadAudioFiles() {
+    const categories = ['quranStudy', 'prayer', 'charity', 'family', 'general'];
+    categories.forEach(category => {
+      const audioUrl = this.getIslamicAudioUrl(category);
+      const audio = new Audio();
+      audio.src = audioUrl;
+      audio.preload = 'metadata';
+      console.log(`Preloading audio for ${category}`);
+    });
   }
 }
 

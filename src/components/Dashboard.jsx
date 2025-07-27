@@ -39,6 +39,9 @@ function Dashboard({ currentTime, addNotification }) {
     const initAudio = async () => {
       const initialized = await audioManager.initializeAudio();
       console.log('Audio manager initialized:', initialized);
+      
+      // Preload audio files for better performance
+      audioManager.preloadAudioFiles();
     };
     
     initAudio();
@@ -139,13 +142,13 @@ function Dashboard({ currentTime, addNotification }) {
   };
 
   const testAudioReminder = async () => {
-    console.log('Testing audio reminder...');
+    console.log('Testing Quranic audio reminder...');
     await audioManager.initializeAudio();
-    audioManager.playReminderSound('quranStudy', 5000);
+    audioManager.playReminderSound('quranStudy', 8000);
     addNotification({
       type: 'success',
       title: 'Audio Test 🔊',
-      message: 'Playing beautiful Quranic reminder tone...'
+      message: 'Playing beautiful Quranic recitation...'
     });
   };
 
@@ -197,7 +200,7 @@ function Dashboard({ currentTime, addNotification }) {
           <button
             onClick={testAudioReminder}
             className="p-2 bg-emerald-100 hover:bg-emerald-200 rounded-full transition-colors"
-            title="Test Audio Reminder"
+            title="Test Quranic Reminder"
           >
             <SafeIcon icon={FiVolume2} className="text-emerald-600" />
           </button>
@@ -288,11 +291,11 @@ function Dashboard({ currentTime, addNotification }) {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold flex items-center space-x-2">
                 <SafeIcon icon={FiVolume2} className="text-xl" />
-                <span>Quick Reminders</span>
+                <span>Quranic Reminders</span>
               </h3>
             </div>
             <p className="text-sm opacity-90 mb-4">
-              Beautiful Islamic tones for your daily practices
+              Beautiful Quranic recitations for your daily practices
             </p>
             <div className="space-y-3">
               {quickReminders.map((reminder, index) => (
